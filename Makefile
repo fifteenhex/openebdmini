@@ -11,4 +11,4 @@ clean:
 	rm *.ihx
 
 flash: openebdmini.ihx
-	./stm8flash/stm8flash -c stlinkv2 -p stm8s105?4 -s flash -w $<
+	sudo ./stm8flash/stm8flash -c stlinkv2 -p stm8s105?4 -s flash -w $<
