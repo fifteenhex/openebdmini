@@ -45,7 +45,6 @@
 #define PF_CR1 (volatile uint8_t*)(CR1REG(PF_BASE))
 #define PF_CR2 (volatile uint8_t*)(CR2REG(PF_BASE))
 
-
 #define UART2_BASE	0x5240
 #define UART2_SR	(volatile uint8_t*)( UART_BASE)
 #define UART2_DR	(volatile uint8_t*)( UART_BASE + 1)
@@ -73,7 +72,6 @@
 #define ADC_CR1_ADON	(1)
 #define ADC_CR1_CONT	(1 << 1)
 
-
 #define ADC_CR2		(volatile uint8_t*)(ADC_BASE + 2)
 #define ADC_CR3		(volatile uint8_t*)(ADC_BASE + 3)
 #define ADC_DRH		(*(volatile uint8_t*)(ADC_BASE + 4))
@@ -89,7 +87,6 @@
 #define ADC_AWCRH	(volatile uint8_t*)(ADC_BASE + e)
 #define ADC_AWCRL	(volatile uint8_t*)(ADC_BASE + f)
 
-
 #define CLK_BASE	0x50C0
 #define CLK_ICKR	(volatile uint8_t*)(CLK_BASE)
 #define CLK_ECKR        (volatile uint8_t*)(CLK_BASE + 1)
@@ -100,6 +97,53 @@
 #define CLK_PCKENR1	(volatile uint8_t*)(CLK_BASE + 7)
 #define CLK_CSSR        (volatile uint8_t*)(CLK_BASE + 8)
 #define CLK_CCOR        (volatile uint8_t*)(CLK_BASE + 9)
-#define CLK_PCKENR2	(volatile uint8_t*)(CLK_BASE + a)
-#define CLK_HSITRIMR	(volatile uint8_t*)(CLK_BASE + c)
-#define CLK_SWIMCCR	(volatile uint8_t*)(CLK_BASE + d)
+#define CLK_PCKENR2	(volatile uint8_t*)(CLK_BASE + 0xa)
+#define CLK_HSITRIMR	(volatile uint8_t*)(CLK_BASE + 0xc)
+#define CLK_SWIMCCR	(volatile uint8_t*)(CLK_BASE + 0xd)
+
+#define TIM1_BASE		0x5250
+#define TIM1_CR1		(*(volatile uint8_t*)(TIM1_BASE))
+#define TIM1_CR1_ARPE	(1 << 7)
+#define TIM1_CR1_CEN	1
+
+#define TIM1_CR2	(*(volatile uint8_t*)(TIM1_BASE + 0x1))
+#define TIM1_SMCR	(*(volatile uint8_t*)(TIM1_BASE + 0x2))
+#define TIM1_ETR	(*(volatile uint8_t*)(TIM1_BASE + 0x3))
+#define TIM1_IER	(*(volatile uint8_t*)(TIM1_BASE + 0x4))
+#define TIM1_SR1	(*(volatile uint8_t*)(TIM1_BASE + 0x5))
+#define TIM1_SR2	(*(volatile uint8_t*)(TIM1_BASE + 0x6))
+
+#define TIM1_EGR	(*(volatile uint8_t*)(TIM1_BASE + 0x7))
+#define TIM1_EGR_UG	1
+
+#define TIM1_CCMR1	(*(volatile uint8_t*)(TIM1_BASE + 0x8))
+#define TIM1_CCMR2	(*(volatile uint8_t*)(TIM1_BASE + 0x9))
+#define TIM1_CCMR3	(*(volatile uint8_t*)(TIM1_BASE + 0xa))
+#define TIM1_CCMR4	(*(volatile uint8_t*)(TIM1_BASE + 0xb))
+
+#define TIM1_CCER1		(*(volatile uint8_t*)(TIM1_BASE + 0xc))
+#define TIM1_CCER1_CC1E	1
+
+#define TIM1_CCER2	(*(volatile uint8_t*)(TIM1_BASE + 0xd))
+#define TIM1_CNTRH	(*(volatile uint8_t*)(TIM1_BASE + 0xe))
+#define TIM1_CNTRL	(*(volatile uint8_t*)(TIM1_BASE + 0xf))
+#define TIM1_PSCRH	(*(volatile uint8_t*)(TIM1_BASE + 0x10))
+#define TIM1_PSCRL	(*(volatile uint8_t*)(TIM1_BASE + 0x11))
+#define TIM1_ARRH	(*(volatile uint8_t*)(TIM1_BASE + 0x12))
+#define TIM1_ARRL	(*(volatile uint8_t*)(TIM1_BASE + 0x13))
+#define TIM1_RCR	(*(volatile uint8_t*)(TIM1_BASE + 0x14))
+#define TIM1_CCR1H	(*(volatile uint8_t*)(TIM1_BASE + 0x15))
+#define TIM1_CCR1L	(*(volatile uint8_t*)(TIM1_BASE + 0x16))
+#define TIM1_CCR2H	(*(volatile uint8_t*)(TIM1_BASE + 0x17))
+#define TIM1_CCR2L	(*(volatile uint8_t*)(TIM1_BASE + 0x18))
+#define TIM1_CCR3H	(*(volatile uint8_t*)(TIM1_BASE + 0x19))
+#define TIM1_CCR3L	(*(volatile uint8_t*)(TIM1_BASE + 0x1a))
+#define TIM1_CCR4H	(*(volatile uint8_t*)(TIM1_BASE + 0x1b))
+#define TIM1_CCR4L	(*(volatile uint8_t*)(TIM1_BASE + 0x1c))
+
+#define TIM1_BKR		(*(volatile uint8_t*)(TIM1_BASE + 0x1d))
+#define TIM1_BKR_MOE	(1 << 7)
+
+#define TIM1_DTR	(*(volatile uint8_t*)(TIM1_BASE + 0x1e))
+#define TIM1_OISR	(*(volatile uint8_t*)(TIM1_BASE + 0x1f))
+

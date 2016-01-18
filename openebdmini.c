@@ -1,36 +1,54 @@
-/* Firmware to replace the original on EBD-MINI v3 programmagble load
+/* Firmware to replace the original on EBD-MINI v3 programmable load
  *
  * Hardware info:
+ *
+ * MOSFET for the load
+ * Shunt regulator for 3.3v supply
+ * 2 x LM358A op-amps
+ * Shunt resistor for current sensing, seems to be 20mOhm
+ *
  * LED - PB1
  * Fan - PB2
  * 
-
-      AIN3 PB3
- 	AIN4 PB4 -- Voltage?
-
- * PC1 
-* ON 		PD3
+ * Programming connector, pin closest to the stm8 first
+ * swim, 3.3v, nrst, gnd
+ *
+ * AIN3 PB3  -- -A, +A end of shunt
+ * AIN4 PB4 -- voltage, low gain
+ * AIN5 PB5 -- voltage, high gain, handles upto ~6v
+ *
+ * LOAD		PC1 -- Goes into one of the op amps
+ * ON 		PD3
  * SET		PD7
  *
- * Left to right
+ * Display select, left to right
  * 0 - PD4
  * 1 - PC5
  * 2 - PC3
  * 3 - PC2
  *
- * Bottom	PD2 --
- * Bottom Right	PC6 --
- * Bottom Left	PB0 --
- * Top 		PD1 --
- * Top Right	PE5 --
- * Top Left	PC7
- * Bar		PC4
- * Dot		PD0
+ * Bottom			PD2
+ * Bottom Right		PC6
+ * Bottom Left		PB0
+ * Top				PD1
+ * Top Right		PE5
+ * Top Left			PC7
+ * Bar				PC4
+ * Dot				PD0
  */
 
 #include <stdbool.h>
 
 #include "stm8.h"
+
+#define ADC_VIN 4
+#define ADC_SHUNT 3
+#define ADC_VIN_HIGHGAIN 5
+#define MILLIVOLTSPERSTEP 20
+
+// tenths of millivolts
+#define MILLIVOLTSPERSTEP_HIGHGAIN 65
+#define HIGHOFFSET 20
 
 typedef struct {
 	volatile uint8_t* odr;
@@ -38,7 +56,20 @@ typedef struct {
 } digit;
 
 typedef enum {
-	ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, CHAR_A, CHAR_V, CHAR_SPACE
+	ZERO,
+	ONE,
+	TWO,
+	THREE,
+	FOUR,
+	FIVE,
+	SIX,
+	SEVEN,
+	EIGHT,
+	NINE,
+	CHAR_A,
+	CHAR_V,
+	CHAR_LITTLEV,
+	CHAR_SPACE
 } character;
 
 typedef struct {
@@ -49,102 +80,61 @@ typedef struct {
 } characterbits;
 
 static characterbits cbits[] = {
-	// ZERO
-	{ 
-	.pbbits = 1,
-	.pcbits = (1 << 7) | (1<< 6), 
-	.pdbits = (1 << 2) | (1 << 1), 
-	.pebits = (1 << 5)},
-        // ONE
-        { 
-        .pbbits = 1,
-        .pcbits = (1 << 7), 
-        .pdbits = 0, 
-        .pebits = 0},
-        // TWO
-        { 
-        .pbbits = 1,
-        .pcbits = (1 << 4), 
-        .pdbits = (1 << 2) | (1 << 1), 
-        .pebits = (1 << 5)},
-        // THREE
-        { 
-        .pbbits = 0,
-        .pcbits = (1<< 6) | (1 << 4), 
-        .pdbits = (1 << 2) | (1 << 1), 
-        .pebits = 1 << 5},
-        // FOUR
-        { 
-        .pbbits = 0,
-        .pcbits = (1 << 7) | (1<< 6) | (1 << 4), 
-        .pdbits = 0, 
-        .pebits = (1 << 5)},
-        // FIVE
-        { 
-        .pbbits = 0,
-        .pcbits = (1 << 7) | (1<< 6) | (1 << 4), 
-        .pdbits = (1 << 2) | (1 << 1), 
-        .pebits = 0},
-        // SIX
-        { 
-        .pbbits = 1,
-        .pcbits = (1 << 7) | (1<< 6) | (1 << 4), 
-        .pdbits = (1 << 2) | (1 << 1), 
-        .pebits = 0},
-        // SEVEN
-        { 
-        .pbbits = 0,
-        .pcbits = (1<< 6), 
-        .pdbits = (1 << 1), 
-        .pebits = (1 << 5)},
-        // EIGHT
-        { 
-        .pbbits = 1,
-        .pcbits = (1 << 7) | (1<< 6) | (1 << 4), 
-        .pdbits = (1 << 2) | (1 << 1), 
-        .pebits = (1 << 5)},
-	// NINE
-        { 
-        .pbbits = 0,
-        .pcbits = (1 << 7) | (1<< 6) | (1 << 4), 
-        .pdbits = (1 << 2) | (1 << 1), 
-        .pebits = (1 << 5)},
-        // A
-        { 
-        .pbbits = 1,
-        .pcbits = (1 << 7) | (1<< 6) | (1 << 4), 
-        .pdbits = (1 << 1), 
-        .pebits = (1 << 5)},
-        // V
-        { 
-        .pbbits = 1,
-        .pcbits = (1 << 7) | (1<< 6),
-        .pdbits = (1 << 2), 
-        .pebits = (1 << 5)},
-	// SPACE
-	{   
-        .pbbits = 0,
-        .pcbits = 0,
-        .pdbits = 0, 
-        .pebits = 0}
-};
+// ZERO
+		{ .pbbits = 1, .pcbits = (1 << 7) | (1 << 6), .pdbits = (1 << 2)
+				| (1 << 1), .pebits = (1 << 5) },
+		// ONE
+		{ .pbbits = 1, .pcbits = (1 << 7), .pdbits = 0, .pebits = 0 },
+		// TWO
+		{ .pbbits = 1, .pcbits = (1 << 4), .pdbits = (1 << 2) | (1 << 1),
+				.pebits = (1 << 5) },
+		// THREE
+		{ .pbbits = 0, .pcbits = (1 << 6) | (1 << 4), .pdbits = (1 << 2)
+				| (1 << 1), .pebits = 1 << 5 },
+		// FOUR
+		{ .pbbits = 0, .pcbits = (1 << 7) | (1 << 6) | (1 << 4), .pdbits = 0,
+				.pebits = (1 << 5) },
+		// FIVE
+		{ .pbbits = 0, .pcbits = (1 << 7) | (1 << 6) | (1 << 4), .pdbits = (1
+				<< 2) | (1 << 1), .pebits = 0 },
+		// SIX
+		{ .pbbits = 1, .pcbits = (1 << 7) | (1 << 6) | (1 << 4), .pdbits = (1
+				<< 2) | (1 << 1), .pebits = 0 },
+		// SEVEN
+		{ .pbbits = 0, .pcbits = (1 << 6), .pdbits = (1 << 1), .pebits =
+				(1 << 5) },
+		// EIGHT
+		{ .pbbits = 1, .pcbits = (1 << 7) | (1 << 6) | (1 << 4), .pdbits = (1
+				<< 2) | (1 << 1), .pebits = (1 << 5) },
+		// NINE
+		{ .pbbits = 0, .pcbits = (1 << 7) | (1 << 6) | (1 << 4), .pdbits = (1
+				<< 2) | (1 << 1), .pebits = (1 << 5) },
+		// A
+		{ .pbbits = 1, .pcbits = (1 << 7) | (1 << 6) | (1 << 4), .pdbits = (1
+				<< 1), .pebits = (1 << 5) },
+		// V
+		{ .pbbits = 1, .pcbits = (1 << 7) | (1 << 6), .pdbits = (1 << 2),
+				.pebits = (1 << 5) },
+		// Little V
+		{ .pbbits = 1, .pcbits = (1 << 6), .pdbits = (1 << 2), .pebits = 0 },
+		// SPACE
+		{ .pbbits = 0, .pcbits = 0, .pdbits = 0, .pebits = 0 } };
 
-static digit digits[] = {
-{.odr = PD_ODR, .bit = 4},
-{.odr = PC_ODR, .bit = 5},
-{.odr = PC_ODR, .bit = 3},
-{.odr = PC_ODR, .bit = 2}};
+static digit digits[] = { { .odr = PD_ODR, .bit = 4 },
+		{ .odr = PC_ODR, .bit = 5 }, { .odr = PC_ODR, .bit = 3 }, { .odr =
+		PC_ODR, .bit = 2 } };
 
 typedef enum {
 	OPMODE_OFF, OPMODE_SET, OPMODE_ON
 } operationmode;
 
 typedef enum {
- VOLTS, AMPS, AMPHOURS, WATTS
+	VOLTS, AMPS, AMPHOURS, WATTS, DISPMODE_END
 } displaymode;
 
 static operationmode om = OPMODE_OFF;
 static displaymode dm = VOLTS;
+static bool highgain = false;
 
 static uint32_t systick = 0;
 
@@ -155,49 +145,78 @@ static uint16_t amps = 0;
 static uint16_t amphours = 0;
 static uint16_t watts = 0;
 
-static void setuppins(volatile uint8_t* ddr, volatile uint8_t* cr1, uint8_t bits){
+static void setuppins(volatile uint8_t* ddr, volatile uint8_t* cr1,
+		uint8_t bits) {
 	*ddr |= bits;
 	*cr1 |= bits;
 }
 
-static void initsystem(void){
+static void initsystem(void) {
 	*CLK_CKDIVR = 0; // default is 2MHz, remove divider for 16MHz
 }
 
-static void initload(void){
-	setuppins(PC_DDR, PC_CR1, 1 << 1);
-	*PC_ODR &= 1 << 1;
+static void setloadduty(uint16_t duty) {
+	TIM1_CCR1H = (uint8_t)((duty >> 8) & 0xff);
+	TIM1_CCR1L = (uint8_t)(duty & 0xff);
+	TIM1_EGR |= TIM1_EGR_UG;
 }
 
-static void initfan(void){
+static void initload(void) {
+	const uint16_t reloadvalue = 1024;
+
+	setuppins(PC_DDR, PC_CR1, 1 << 1);
+	*PC_ODR &= ~(1 << 1);
+
+	TIM1_CCMR1 |= (111 << 4); // pwm mode 1
+	TIM1_CCER1 |= TIM1_CCER1_CC1E;
+	TIM1_BKR |= TIM1_BKR_MOE;
+
+	TIM1_ARRH = (uint8_t)((reloadvalue >> 8) & 0xff);
+	TIM1_ARRL = (uint8_t)(reloadvalue & 0xff);
+
+	setloadduty(reloadvalue);
+
+	TIM1_CR1 |= TIM1_CR1_ARPE | TIM1_CR1_CEN;
+}
+
+static void initfan(void) {
 	setuppins(PB_DDR, PB_CR1, 1 << 2);
 }
 
-static void initserial(void){
+static void initserial(void) {
 
 }
 
-static void initdisplay(void){
-	setuppins(PB_DDR, PB_CR1, cbits[EIGHT].pbbits | ( 1 << 1));
-        setuppins(PC_DDR, PC_CR1, (cbits[EIGHT].pcbits | (1 << 5) | (1 << 3) | (1 << 2)));
-       	setuppins(PD_DDR, PD_CR1, (cbits[EIGHT].pdbits | (1 << 4) | 1));
+static void initdisplay(void) {
+	setuppins(PB_DDR, PB_CR1, cbits[EIGHT].pbbits | (1 << 1));
+	setuppins(PC_DDR, PC_CR1,
+			(cbits[EIGHT].pcbits | (1 << 5) | (1 << 3) | (1 << 2)));
+	setuppins(PD_DDR, PD_CR1, (cbits[EIGHT].pdbits | (1 << 4) | 1));
 	setuppins(PE_DDR, PE_CR1, cbits[EIGHT].pebits);
 }
 
-static void initbuttons(void){
+static void initbuttons(void) {
 	uint8_t mask = (1 << 3) | (1 << 7);
 	*PD_DDR &= ~mask; // input
 	*PD_CR1 |= mask; // pull up
 }
 
-static void initadc(void){
+static void setadcchan(int which) {
+	uint8_t csr = ADC_CSR;
+	csr &= ~0b111;
+	csr |= which;
+	ADC_CSR = csr;
+}
+
+static void initadc(void) {
+	setadcchan(ADC_VIN);
 	ADC_CR1 |= ADC_CR1_ADON;
 }
 
-static void setdigit(int which, character c, bool dot){
+static void setdigit(int which, character c, bool dot) {
 	int i, j;
 
-	*digits[which].odr &= ~(1 << digits[which].bit);	
+	*digits[which].odr &= ~(1 << digits[which].bit);
 
 	*PB_ODR &= ~cbits[EIGHT].pbbits;
 	*PC_ODR &= ~cbits[EIGHT].pcbits;
@@ -208,32 +227,38 @@ static void setdigit(int which, character c, bool dot){
 	*PC_ODR |= cbits[c].pcbits;
 	*PD_ODR |= cbits[c].pdbits;
 	*PE_ODR |= cbits[c].pebits;
-	if(dot)
+	if (dot)
 		*PD_ODR |= 1;
 	else
 		*PD_ODR &= ~1;
 
-	for(i = 0; i < 32; i++){
-		for(j = 0; j < 32; j++){}
+	for (i = 0; i < 32; i++) {
+		for (j = 0; j < 32; j++) {
+		}
 	}
-	
+
 	*digits[which].odr |= 1 << digits[which].bit;
 
-	for(i = 0; i < 32; i++){
-		for(j = 0; j < 32; j++){}
+	for (i = 0; i < 32; i++) {
+		for (j = 0; j < 32; j++) {
+		}
 	}
 
 }
 
-static void turnonled(){
+static void turnonled() {
 	*PB_ODR |= (1 << 1);
 }
 
-static void turnonfan(){
+static void turnonfan() {
 	*PB_ODR |= (1 << 2);
 }
 
-static void split(uint16_t value, uint16_t* buffer){
+static void configureload() {
+	*PC_ODR |= 1 << 1;
+}
+
+static void split(uint16_t value, uint16_t* buffer) {
 	buffer[2] = value % 10;
 	value -= buffer[2];
 	buffer[1] = value % 100;
@@ -244,80 +269,119 @@ static void split(uint16_t value, uint16_t* buffer){
 	buffer[0] /= 100;
 }
 
-static uint16_t readadc(int which){
-	uint16_t result; 
-	ADC_CSR |= which;
+static uint16_t readadc(int which) {
+	uint16_t result;
+	setadcchan(which);
 	ADC_CR1 |= ADC_CR1_ADON;
-	while((ADC_CSR & ADC_CSR_EOC) == 0){
+	while ((ADC_CSR & ADC_CSR_EOC) == 0) {
 
 	}
 	ADC_CSR &= ~ADC_CSR_EOC;
-	result = (((uint16_t) ADC_DRH) << 2) | ADC_DRL; 
+	result = (((uint16_t) ADC_DRH) << 2) | ADC_DRL;
 	return result;
 }
 
-static void checkstate(void){
-	//volts++;
-	//volts = readadc(3);
-	volts = readadc(4);
+static int8_t volttrim = -1;
+
+#define SAMPLES 12
+static uint16_t voltsamples[SAMPLES] = { 0 };
+static uint16_t shuntsamples[SAMPLES] = { 0 };
+static uint16_t volthighgainsamples[SAMPLES] = { 0 };
+static uint8_t sample = 0;
+
+static void checkstate(void) {
+	int i;
+	uint32_t voltsum = 0;
+	uint32_t shuntsum = 0;
+	uint32_t volthighgainsum = 0;
+	uint16_t lowgainvolts, highgainvolts;
+
+	//amps = readadc(ADC_SHUNT);
+	shuntsamples[sample] = readadc(ADC_SHUNT);
+	voltsamples[sample] = readadc(ADC_VIN);
+	volthighgainsamples[sample] = readadc(ADC_VIN_HIGHGAIN);
+
+	sample = (sample + 1) % SAMPLES;
+	for (i = 0; i < SAMPLES; i++) {
+		shuntsum += shuntsamples[i];
+		voltsum += voltsamples[i];
+		volthighgainsum += volthighgainsamples[i];
+	}
+
+	//amps = (shuntsum / 2);
+	highgainvolts = (((volthighgainsum / SAMPLES) * MILLIVOLTSPERSTEP_HIGHGAIN)
+			/ 10) - HIGHOFFSET;
+	lowgainvolts = (voltsum / SAMPLES) * (MILLIVOLTSPERSTEP);
+	highgain = lowgainvolts <= 6000;
+	if (highgain)
+		volts = highgainvolts;
+	else
+		volts = lowgainvolts;
+
 	//volts = readadc(5);
 }
 
-static void checkbuttons(void){
+static void checkbuttons(void) {
 	uint8_t portbits = *PD_IDR;
-	if((portbits & (1 << 3)) == 0)
-		volts += 100;
-	if((portbits & (1 << 7)) == 0)
-		volts -= 100;
+	//if ((portbits & (1 << 3)) == 0)
+
+	if ((portbits & (1 << 7)) == 0) {
+		switch (om) {
+		case OPMODE_OFF:
+			dm++;
+			if (dm == DISPMODE_END)
+				dm = 0;
+			break;
+		}
+	}
+
 }
 
-static void updatedisplay(void){
+static void updatedisplay(void) {
 	uint16_t millis;
 	uint16_t units;
 
-	uint16_t	value = 1;
-	character	unit;
+	uint16_t value = 1;
+	character unit;
 
 	uint16_t splittmp[3];
 	int digit = 0;
 	int pos;
 
-	switch(dm){
-		case VOLTS:
-			unit = CHAR_V;
-			value = volts;
-			break;
-		case AMPS:
-			unit = CHAR_A;
-			break;
-		case AMPHOURS:
-			unit = CHAR_A;
-			break;
-		case WATTS:
-			unit = CHAR_A;
-			break;
+	switch (dm) {
+	case VOLTS:
+		unit = highgain ? CHAR_LITTLEV : CHAR_V;
+		value = volts;
+		break;
+	case AMPS:
+		unit = CHAR_A;
+		value = amps;
+		break;
+	case AMPHOURS:
+		unit = CHAR_SPACE;
+		break;
+	case WATTS:
+		unit = CHAR_SPACE;
+		break;
 	}
-	
 
 	millis = value % 1000;
 	units = (value - millis) / 1000;
-	
+
 	split(units, splittmp);
 
-	for(pos = 0; pos < 3; pos++){
-		if(splittmp[pos] != 0 || pos == 2){
+	for (pos = 0; pos < 3; pos++) {
+		if (splittmp[pos] != 0 || pos == 2) {
 			setdigit(digit, (character) splittmp[pos], pos == 2);
 			digit++;
 		}
 	}
 
 	split(millis, splittmp);
-	for(pos = 0; pos < 3 && digit < 3; pos++){
+	for (pos = 0; pos < 3 && digit < 3; pos++) {
 		setdigit(digit, (character) splittmp[pos], false);
 		digit++;
 	}
-
-	
 
 	setdigit(digit, unit, false);
 
@@ -333,7 +397,9 @@ int main() {
 	initadc();
 
 	turnonled();
-//	turnonfan();
+	turnonfan();
+
+	setloadduty(800);
 
 	while (1) {
 		checkstate();
