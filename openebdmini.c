@@ -40,6 +40,9 @@
 #include <stdbool.h>
 
 #include "stm8.h"
+#include "uart.h"
+
+#define FANWATTTHRESHOLD	2500
 
 #define ADC_VIN 4
 #define ADC_SHUNT 3
@@ -49,6 +52,8 @@
 // tenths of millivolts
 #define MILLIVOLTSPERSTEP_HIGHGAIN 65
 #define HIGHOFFSET 20
+
+#define MICROVOLTSPERSTEP_SHUNT 68
 
 typedef struct {
 	volatile uint8_t* odr;
@@ -125,7 +130,10 @@ static digit digits[] = { { .odr = PD_ODR, .bit = 4 },
 		PC_ODR, .bit = 2 } };
 
 typedef enum {
-	OPMODE_OFF, OPMODE_SET, OPMODE_ON
+	OPMODE_OFF, // load is turned off
+	OPMODE_SET, // user is setting parameters, load is off
+	OPMODE_ON, // load is on
+	OPMODE_LVC, // low voltage cutoff triggered, load is off
 } operationmode;
 
 typedef enum {
@@ -139,11 +147,14 @@ static bool highgain = false;
 static uint32_t systick = 0;
 
 static uint16_t lvc = 2000;
+static uint16_t targetamps = 1000;
 
 static uint16_t volts = 0;
 static uint16_t amps = 0;
 static uint16_t amphours = 0;
 static uint16_t watts = 0;
+
+static uint16_t loadduty = 800;
 
 static void setuppins(volatile uint8_t* ddr, volatile uint8_t* cr1,
 		uint8_t bits) {
@@ -179,12 +190,17 @@ static void initload(void) {
 	TIM1_CR1 |= TIM1_CR1_ARPE | TIM1_CR1_CEN;
 }
 
+static void turnoffload() {
+	loadduty = 1025;
+	setloadduty(loadduty);
+}
+
 static void initfan(void) {
 	setuppins(PB_DDR, PB_CR1, 1 << 2);
 }
 
 static void initserial(void) {
-
+	uart_configure();
 }
 
 static void initdisplay(void) {
@@ -253,20 +269,28 @@ static void turnonled() {
 static void turnonfan() {
 	*PB_ODR |= (1 << 2);
 }
+static void turnofffan() {
+	*PB_ODR &= ~(1 << 2);
+}
 
 static void configureload() {
 	*PC_ODR |= 1 << 1;
 }
 
-static void split(uint16_t value, uint16_t* buffer) {
-	buffer[2] = value % 10;
-	value -= buffer[2];
-	buffer[1] = value % 100;
-	value -= buffer[1];
-	buffer[0] = value;
-
-	buffer[1] /= 10;
-	buffer[0] /= 100;
+static void split(uint16_t value, uint16_t* buffer, int digits) {
+	uint16_t tmp;
+	for (; digits > 0; digits--) {
+		tmp = value % 10;
+		buffer[digits - 1] = tmp;
+		value -= tmp;
+		if (value == 0) {
+			digits--;
+			break;
+		} else
+			value /= 10;
+	}
+	for (; digits > 0; digits--)
+		buffer[digits - 1] = 0;
 }
 
 static uint16_t readadc(int which) {
@@ -294,9 +318,9 @@ static void checkstate(void) {
 	uint32_t voltsum = 0;
 	uint32_t shuntsum = 0;
 	uint32_t volthighgainsum = 0;
+	uint32_t wattstemp = 0;
 	uint16_t lowgainvolts, highgainvolts;
 
-	//amps = readadc(ADC_SHUNT);
 	shuntsamples[sample] = readadc(ADC_SHUNT);
 	voltsamples[sample] = readadc(ADC_VIN);
 	volthighgainsamples[sample] = readadc(ADC_VIN_HIGHGAIN);
@@ -308,7 +332,7 @@ static void checkstate(void) {
 		volthighgainsum += volthighgainsamples[i];
 	}
 
-	//amps = (shuntsum / 2);
+	amps = ((shuntsum / SAMPLES) * MICROVOLTSPERSTEP_SHUNT) / 20;
 	highgainvolts = (((volthighgainsum / SAMPLES) * MILLIVOLTSPERSTEP_HIGHGAIN)
 			/ 10) - HIGHOFFSET;
 	lowgainvolts = (voltsum / SAMPLES) * (MILLIVOLTSPERSTEP);
@@ -318,12 +342,109 @@ static void checkstate(void) {
 	else
 		volts = lowgainvolts;
 
+	wattstemp = ((uint32_t) amps * (uint32_t) volts) / 1000;
+	watts = (uint16_t) wattstemp;
+
+	if (watts > FANWATTTHRESHOLD)
+		turnonfan();
+	else
+		turnofffan();
+
+	switch (om) {
+	case OPMODE_ON:
+		if (volts < lvc) {
+			om = OPMODE_LVC;
+			turnoffload();
+		} else {
+			if (amps < targetamps) {
+				if (loadduty > 300) {
+					loadduty--;
+					setloadduty(loadduty);
+				}
+			} else if (amps > targetamps) {
+				if (loadduty < 1000) {
+					loadduty++;
+					setloadduty(loadduty);
+				}
+			}
+		}
+		break;
+	}
+
 	//volts = readadc(5);
+}
+
+static void sep(void) {
+	uart_puts(",");
+}
+
+static void splitandprintvalue(uint16_t value) {
+	int i;
+	uint16_t splittmp[6];
+	split(value, splittmp, 6);
+	for (i = 0; i < 6; i++) {
+		uart_putch(splittmp[i] + 0x30);
+	}
+}
+
+static void sendstate(void) {
+
+	switch (om) {
+	case OPMODE_OFF:
+		uart_puts("off");
+		break;
+	case OPMODE_SET:
+		uart_puts("set");
+		break;
+	case OPMODE_ON:
+		uart_puts("on");
+		break;
+	case OPMODE_LVC:
+		uart_puts("lvc");
+		break;
+	}
+	sep();
+
+	// volts
+	splitandprintvalue(volts);
+	sep();
+
+	// amps
+	splitandprintvalue(amps);
+	sep();
+
+	// watts
+	splitandprintvalue(watts);
+	sep();
+
+	// target amps
+	splitandprintvalue(targetamps);
+	sep();
+
+	// lvc
+	splitandprintvalue(lvc);
+
+	//
+	sep();
+	splitandprintvalue(loadduty);
+
+	uart_puts("\r\n");
 }
 
 static void checkbuttons(void) {
 	uint8_t portbits = *PD_IDR;
-	//if ((portbits & (1 << 3)) == 0)
+
+	if ((portbits & (1 << 3)) == 0) {
+		switch (om) {
+		case OPMODE_OFF:
+			om = OPMODE_ON;
+			break;
+		case OPMODE_ON:
+		om = OPMODE_OFF;
+		turnoffload();
+		break;
+		}
+	}
 
 	if ((portbits & (1 << 7)) == 0) {
 		switch (om) {
@@ -331,6 +452,9 @@ static void checkbuttons(void) {
 			dm++;
 			if (dm == DISPMODE_END)
 				dm = 0;
+			break;
+		case OPMODE_LVC:
+			om = OPMODE_OFF;
 			break;
 		}
 	}
@@ -368,7 +492,7 @@ static void updatedisplay(void) {
 	millis = value % 1000;
 	units = (value - millis) / 1000;
 
-	split(units, splittmp);
+	split(units, splittmp, 3);
 
 	for (pos = 0; pos < 3; pos++) {
 		if (splittmp[pos] != 0 || pos == 2) {
@@ -377,7 +501,7 @@ static void updatedisplay(void) {
 		}
 	}
 
-	split(millis, splittmp);
+	split(millis, splittmp, 3);
 	for (pos = 0; pos < 3 && digit < 3; pos++) {
 		setdigit(digit, (character) splittmp[pos], false);
 		digit++;
@@ -399,10 +523,9 @@ int main() {
 	turnonled();
 	turnonfan();
 
-	setloadduty(800);
-
 	while (1) {
 		checkstate();
+		sendstate();
 		checkbuttons();
 		updatedisplay();
 	}

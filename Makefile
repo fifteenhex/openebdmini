@@ -1,9 +1,16 @@
-CFLAGS=--std-sdcc99
+CFLAGS=--std-sdcc99 -lstm8 -mstm8
 CC=sdcc
 
+all: openebdmini.ihx
 
-openebdmini.ihx: openebdmini.c
-	sdcc $(CFLAGS) -lstm8 -mstm8 --out-fmt-ihx $<
+uart.rel: uart.c
+	sdcc $(CFLAGS) -c uart.c
+
+openebdmini.rel: openebdmini.c
+	sdcc $(CFLAGS) -c openebdmini.c 
+
+openebdmini.ihx: openebdmini.rel uart.rel
+	sdcc $(CFLAGS) --out-fmt-ihx $^
 
 .PHONY:clean flash
 

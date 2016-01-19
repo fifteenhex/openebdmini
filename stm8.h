@@ -1,3 +1,4 @@
+#pragma once
 #include <stdint.h>
 
 #define ODRREG(base) (base)
@@ -45,19 +46,27 @@
 #define PF_CR1 (volatile uint8_t*)(CR1REG(PF_BASE))
 #define PF_CR2 (volatile uint8_t*)(CR2REG(PF_BASE))
 
-#define UART2_BASE	0x5240
-#define UART2_SR	(volatile uint8_t*)( UART_BASE)
-#define UART2_DR	(volatile uint8_t*)( UART_BASE + 1)
-#define UART2_BRR1	(volatile uint8_t*)( UART_BASE + 2)
-#define UART2_BRR2	(volatile uint8_t*)( UART_BASE + 3)
-#define UART2_CR1	(volatile uint8_t*)( UART_BASE + 4)
-#define UART2_CR2	(volatile uint8_t*)( UART_BASE + 5)
-#define UART2_CR3	(volatile uint8_t*)( UART_BASE + 6)
-#define UART2_CR4	(volatile uint8_t*)( UART_BASE + 7)
-#define UART2_CR5	(volatile uint8_t*)( UART_BASE + 8)
-#define UART2_CR6	(volatile uint8_t*)( UART_BASE + 9)
-#define UART2_GTR	(volatile uint8_t*)( UART_BASE + a)
-#define UART2_PSCR	(volatile uint8_t*)( UART_BASE + b)
+#define UART2_BASE		0x5240
+#define UART2_SR		(*(volatile uint8_t*)(UART2_BASE))
+#define UART2_SR_TXE	(1 << 7)
+#define UART2_SR_TC		(1 << 6)
+
+#define UART2_DR	(*(volatile uint8_t*)(UART2_BASE + 0x1))
+#define UART2_BRR1	(*(volatile uint8_t*)(UART2_BASE + 0x2))
+#define UART2_BRR2	(*(volatile uint8_t*)(UART2_BASE + 0x3))
+#define UART2_CR1	(*(volatile uint8_t*)(UART2_BASE + 0x4))
+
+#define UART2_CR2		(*(volatile uint8_t*)(UART2_BASE + 0x5))
+#define UART2_CR2_TEN	(1 << 3)
+#define UART2_CR2_REN	(1 << 2)
+
+
+#define UART2_CR3	(*(volatile uint8_t*)(UART2_BASE + 0x6))
+#define UART2_CR4	(*(volatile uint8_t*)(UART2_BASE + 0x7))
+#define UART2_CR5	(*(volatile uint8_t*)(UART2_BASE + 0x8))
+#define UART2_CR6	(*(volatile uint8_t*)(UART2_BASE + 0x9))
+#define UART2_GTR	(*(volatile uint8_t*)(UART2_BASE + 0xa))
+#define UART2_PSCR	(*(volatile uint8_t*)(UART2_BASE + 0xb))
 
 #define ADC_DBBASE	0x53E0
 #define ADC_DB0R	(volatile uint8_t*)(ADC_DBBASE)
