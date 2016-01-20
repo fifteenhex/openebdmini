@@ -15,7 +15,7 @@ openebdmini.ihx: openebdmini.rel uart.rel
 .PHONY:clean flash
 
 clean:
-	rm *.ihx
+	rm *.ihx *.rel
 
 flash: openebdmini.ihx
 	sudo ./stm8flash/stm8flash -c stlinkv2 -p stm8s105?4 -s flash -w $<

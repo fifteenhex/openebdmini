@@ -1,6 +1,9 @@
 #pragma once
 #include <stdint.h>
 
+#define enableInterrupts()    __asm__("rim\n")
+#define waitforinterrupt()    __asm__("wfi\n")
+
 #define ODRREG(base) (base)
 #define IDRREG(base) (base + 1)
 #define DDRREG(base) (base + 2)
@@ -57,9 +60,11 @@
 #define UART2_CR1	(*(volatile uint8_t*)(UART2_BASE + 0x4))
 
 #define UART2_CR2		(*(volatile uint8_t*)(UART2_BASE + 0x5))
+#define UART2_CR2_TIEN	(1 << 7)
+#define UART2_CR2_TCIEN	(1 << 6)
+#define UART2_CR2_RIEN	(1 << 5)
 #define UART2_CR2_TEN	(1 << 3)
 #define UART2_CR2_REN	(1 << 2)
-
 
 #define UART2_CR3	(*(volatile uint8_t*)(UART2_BASE + 0x6))
 #define UART2_CR4	(*(volatile uint8_t*)(UART2_BASE + 0x7))
@@ -156,3 +161,5 @@
 #define TIM1_DTR	(*(volatile uint8_t*)(TIM1_BASE + 0x1e))
 #define TIM1_OISR	(*(volatile uint8_t*)(TIM1_BASE + 0x1f))
 
+#define INTERRUPT_UART2_TXCOMPLETE	20
+#define INTERRUPT_UART2_RXFULL		21

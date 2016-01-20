@@ -440,9 +440,9 @@ static void checkbuttons(void) {
 			om = OPMODE_ON;
 			break;
 		case OPMODE_ON:
-		om = OPMODE_OFF;
-		turnoffload();
-		break;
+			om = OPMODE_OFF;
+			turnoffload();
+			break;
 		}
 	}
 
@@ -514,7 +514,10 @@ static void updatedisplay(void) {
 int main() {
 	initload();
 	initsystem();
+
 	initserial();
+	enableInterrupts();
+
 	initdisplay();
 	initbuttons();
 	initfan();
