@@ -3,7 +3,7 @@
 #include "stm8.h"
 #include "uart.h"
 
-static char txbuffer[16];
+static char txbuffer[64];
 static uint8_t txhead = 0;
 static uint8_t txtail = 0;
 

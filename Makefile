@@ -3,13 +3,22 @@ CC=sdcc
 
 all: openebdmini.ihx
 
+util.rel: util.c
+	sdcc $(CFLAGS) -c $<
+	
+state.rel: state.c
+	sdcc $(CFLAGS) -c $<
+
+display.rel: display.c
+	sdcc $(CFLAGS) -c $<
+	
 uart.rel: uart.c
 	sdcc $(CFLAGS) -c uart.c
 
 openebdmini.rel: openebdmini.c
 	sdcc $(CFLAGS) -c openebdmini.c 
 
-openebdmini.ihx: openebdmini.rel uart.rel
+openebdmini.ihx: openebdmini.rel display.rel uart.rel state.rel util.rel
 	sdcc $(CFLAGS) --out-fmt-ihx $^
 
 .PHONY:clean flash
