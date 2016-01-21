@@ -9,3 +9,4 @@ uint16_t amphours = 0;
 uint16_t watts = 0;
 uint16_t loadduty = 800;
 displaymode dm = VOLTS;
+operationmode om = OPMODE_OFF;

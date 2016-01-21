@@ -42,6 +42,8 @@
 #include "uart.h"
 #include "display.h"
 #include "util.h"
+#include "buttons.h"
+#include "load.h"
 
 #define FANWATTTHRESHOLD	2500
 
@@ -56,48 +58,10 @@
 
 #define MICROVOLTSPERSTEP_SHUNT 68
 
-typedef enum {
-	OPMODE_OFF, // load is turned off
-	OPMODE_SET, // user is setting parameters, load is off
-	OPMODE_ON, // load is on
-	OPMODE_LVC, // low voltage cutoff triggered, load is off
-} operationmode;
-
-static operationmode om = OPMODE_OFF;
-
 static uint32_t systick = 0;
 
 static void initsystem(void) {
 	*CLK_CKDIVR = 0; // default is 2MHz, remove divider for 16MHz
-}
-
-static void setloadduty(uint16_t duty) {
-	TIM1_CCR1H = (uint8_t)((duty >> 8) & 0xff);
-	TIM1_CCR1L = (uint8_t)(duty & 0xff);
-	TIM1_EGR |= TIM1_EGR_UG;
-}
-
-static void initload(void) {
-	const uint16_t reloadvalue = 1024;
-
-	setuppins(PC_DDR, PC_CR1, 1 << 1);
-	*PC_ODR &= ~(1 << 1);
-
-	TIM1_CCMR1 |= (111 << 4); // pwm mode 1
-	TIM1_CCER1 |= TIM1_CCER1_CC1E;
-	TIM1_BKR |= TIM1_BKR_MOE;
-
-	TIM1_ARRH = (uint8_t)((reloadvalue >> 8) & 0xff);
-	TIM1_ARRL = (uint8_t)(reloadvalue & 0xff);
-
-	setloadduty(reloadvalue);
-
-	TIM1_CR1 |= TIM1_CR1_ARPE | TIM1_CR1_CEN;
-}
-
-static void turnoffload() {
-	loadduty = 1025;
-	setloadduty(loadduty);
 }
 
 static void initfan(void) {
@@ -106,12 +70,6 @@ static void initfan(void) {
 
 static void initserial(void) {
 	uart_configure();
-}
-
-static void initbuttons(void) {
-	uint8_t mask = (1 << 3) | (1 << 7);
-	*PD_DDR &= ~mask; // input
-	*PD_CR1 |= mask; // pull up
 }
 
 static void setadcchan(int which) {
@@ -124,10 +82,6 @@ static void setadcchan(int which) {
 static void initadc(void) {
 	setadcchan(ADC_VIN);
 	ADC_CR1 |= ADC_CR1_ADON;
-}
-
-static void turnonled() {
-	*PB_ODR |= (1 << 1);
 }
 
 static void turnonfan() {
@@ -202,24 +156,22 @@ static void checkstate(void) {
 	case OPMODE_ON:
 		if (volts < lvc) {
 			om = OPMODE_LVC;
-			turnoffload();
+			load_turnoff();
 		} else {
 			if (amps < targetamps) {
 				if (loadduty > 300) {
 					loadduty--;
-					setloadduty(loadduty);
+					load_setduty(loadduty);
 				}
 			} else if (amps > targetamps) {
 				if (loadduty < 1000) {
 					loadduty++;
-					setloadduty(loadduty);
+					load_setduty(loadduty);
 				}
 			}
 		}
 		break;
 	}
-
-	//volts = readadc(5);
 }
 
 static void sep(void) {
@@ -279,56 +231,22 @@ static void sendstate(void) {
 	uart_puts("\r\n");
 }
 
-static void checkbuttons(void) {
-	uint8_t portbits = *PD_IDR;
-
-	if ((portbits & (1 << 3)) == 0) {
-		switch (om) {
-		case OPMODE_OFF:
-			om = OPMODE_ON;
-			break;
-		case OPMODE_ON:
-			om = OPMODE_OFF;
-			turnoffload();
-			break;
-		}
-	}
-
-	if ((portbits & (1 << 7)) == 0) {
-		switch (om) {
-		case OPMODE_OFF:
-			dm++;
-			if (dm == DISPMODE_END)
-				dm = 0;
-			break;
-		case OPMODE_LVC:
-			om = OPMODE_OFF;
-			break;
-		}
-	}
-
-}
-
 int main() {
-	initload();
+	load_init();
 	initsystem();
-
 	initserial();
-	enableInterrupts();
-
 	display_init();
-
-	initbuttons();
 	initfan();
 	initadc();
 
-	turnonled();
-	turnonfan();
+	buttons_init();
+
+	enableInterrupts();
 
 	while (1) {
+		buttons_check();
 		checkstate();
 		sendstate();
-		checkbuttons();
 		display_update();
 	}
 }

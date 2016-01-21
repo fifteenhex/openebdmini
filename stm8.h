@@ -161,5 +161,35 @@
 #define TIM1_DTR	(*(volatile uint8_t*)(TIM1_BASE + 0x1e))
 #define TIM1_OISR	(*(volatile uint8_t*)(TIM1_BASE + 0x1f))
 
+#define TIM4_BASE		0x5340
+
+#define TIM4_CR1		(*(volatile uint8_t*)(TIM4_BASE))
+#define TIM4_CR1_ARPE	(1 << 7)
+#define TIM4_CR1_CEN	1
+
+#define TIM4_IER		(*(volatile uint8_t*)(TIM4_BASE + 0x1))
+#define TIM4_IER_UIE	1
+
+#define TIM4_SR			(*(volatile uint8_t*)(TIM4_BASE + 0x2))
+#define TIM4_SR_UIF		1
+
+#define TIM4_EGR		(*(volatile uint8_t*)(TIM4_BASE + 0x3))
+#define TIM4_EGR_UG		1
+
+#define TIM4_CNTR		(*(volatile uint8_t*)(TIM4_BASE + 0x4))
+#define TIM4_PSCR		(*(volatile uint8_t*)(TIM4_BASE + 0x5))
+#define TIM4_ARR		(*(volatile uint8_t*)(TIM4_BASE + 0x6))
+
+#define ITC_BASE					0x50A0
+#define EXTI_RISINGFALLING			11
+#define EXTI_CR1					(*(volatile uint8_t*)(ITC_BASE))
+#define EXTI_CR1_PDIS_SHIFT			6
+#define EXTI_CR1_PDIS_RISINGFALLING (EXTI_RISINGFALLING << EXTI_CR1_PDIS_SHIFT)
+
+#define EXTI_CR2		(*(volatile uint8_t*)(ITC_BASE + 0x1))
+
+#define INTERRUPT_TLI				0 // top level interrupt, port d 7
+#define INTERRUPT_EXTI3				6 // port d external interrupt
 #define INTERRUPT_UART2_TXCOMPLETE	20
 #define INTERRUPT_UART2_RXFULL		21
+#define INTERRUPT_TIM4				23
