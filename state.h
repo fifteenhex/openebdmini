@@ -20,5 +20,6 @@ extern uint16_t amps;
 extern uint16_t amphours;
 extern uint16_t watts;
 extern uint16_t loadduty;
+extern uint8_t digitbeingset;
 extern displaymode dm;
 extern operationmode om;

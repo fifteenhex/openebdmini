@@ -171,6 +171,9 @@ static void checkstate(void) {
 			}
 		}
 		break;
+	case OPMODE_OFF:
+		load_turnoff();
+		break;
 	}
 }
 
@@ -227,6 +230,10 @@ static void sendstate(void) {
 	//
 	sep();
 	splitandprintvalue(loadduty);
+
+	//
+	sep();
+	splitandprintvalue(TIM2_CNTRL);
 
 	uart_puts("\r\n");
 }

@@ -110,11 +110,11 @@ static void setdigit(character c, bool dot) {
 }
 
 static void turnonled() {
-	//*PB_ODR |= (1 << 1);
+	*PB_ODR |= (1 << 1);
 }
 
 static void turnoffled() {
-	//*PB_ODR &= ~(1 << 1);
+	*PB_ODR &= ~(1 << 1);
 }
 
 static int last = 0;
@@ -130,12 +130,14 @@ static void toggleled() {
 
 void display_refresh(void)
 __interrupt(INTERRUPT_TIM4) {
+	character ch;
+	bool dot;
 	int digit = last & 0x03;
 	*digits[digit].odr |= (1 << digits[digit].bit);
 	last++;
 	digit = last & 0x03;
-	setdigit(currentchars[digit], dotpos == digit);
-	*digits[digit].odr &= ~(1 << digits[digit].bit);
+	dot = (dotpos == digit);
+	ch = currentchars[digit];
 
 	switch (om) {
 		case OPMODE_ON:
@@ -144,10 +146,19 @@ __interrupt(INTERRUPT_TIM4) {
 		case OPMODE_OFF:
 		turnoffled();
 		break;
+		case OPMODE_SET:
+		if((digit == digitbeingset) && (last < 0x7f))
+		ch = CHAR_SPACE;
+		if(digit == 3)
+		dot = (om == OPMODE_SET);
+		break;
 		case OPMODE_LVC:
 		toggleled();
 		break;
 	}
+
+	setdigit(ch, dot);
+	*digits[digit].odr &= ~(1 << digits[digit].bit);
 
 	TIM4_SR &= ~TIM4_SR_UIF;
 }
@@ -167,11 +178,17 @@ void display_update(void) {
 	switch (dm) {
 	case VOLTS:
 		unit = highgain ? CHAR_LITTLEV : CHAR_V;
-		value = volts;
+		if (om == OPMODE_SET)
+			value = lvc;
+		else
+			value = volts;
 		break;
 	case AMPS:
 		unit = CHAR_A;
-		value = amps;
+		if (om == OPMODE_SET)
+			value = targetamps;
+		else
+			value = amps;
 		break;
 	case AMPHOURS:
 		unit = CHAR_H;

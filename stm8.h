@@ -161,6 +161,31 @@
 #define TIM1_DTR	(*(volatile uint8_t*)(TIM1_BASE + 0x1e))
 #define TIM1_OISR	(*(volatile uint8_t*)(TIM1_BASE + 0x1f))
 
+#define TIM2_BASE		0x5300
+#define TIM2_CR1		(*(volatile uint8_t*)(TIM2_BASE))
+#define TIM2_CR1_CEN	1
+
+#define TIM2_IER		(*(volatile uint8_t*)(TIM2_BASE + 0x1))
+#define TIM2_SR1		(*(volatile uint8_t*)(TIM2_BASE + 0x2))
+#define TIM2_SR2		(*(volatile uint8_t*)(TIM2_BASE + 0x3))
+#define TIM2_EGR		(*(volatile uint8_t*)(TIM2_BASE + 0x4))
+#define TIM2_CCMR1		(*(volatile uint8_t*)(TIM2_BASE + 0x5))
+#define TIM2_CCMR2		(*(volatile uint8_t*)(TIM2_BASE + 0x6))
+#define TIM2_CCMR3		(*(volatile uint8_t*)(TIM2_BASE + 0x7))
+#define TIM2_CCER1		(*(volatile uint8_t*)(TIM2_BASE + 0x8))
+#define TIM2_CCER2		(*(volatile uint8_t*)(TIM2_BASE + 0x9))
+#define TIM2_CNTRH		(*(volatile uint8_t*)(TIM2_BASE + 0xa))
+#define TIM2_CNTRL		(*(volatile uint8_t*)(TIM2_BASE + 0xb))
+#define TIM2_PSCR		(*(volatile uint8_t*)(TIM2_BASE + 0xc))
+#define TIM2_ARRH		(*(volatile uint8_t*)(TIM2_BASE + 0xd))
+#define TIM2_ARRL		(*(volatile uint8_t*)(TIM2_BASE + 0xe))
+#define TIM2_CCR1H		(*(volatile uint8_t*)(TIM2_BASE + 0xf))
+#define TIM2_CCR1L		(*(volatile uint8_t*)(TIM2_BASE + 0x10))
+#define TIM2_CCR2H		(*(volatile uint8_t*)(TIM2_BASE + 0x11))
+#define TIM2_CCR2L		(*(volatile uint8_t*)(TIM2_BASE + 0x12))
+#define TIM2_CCR3H		(*(volatile uint8_t*)(TIM2_BASE + 0x13))
+#define TIM2_CCR3L		(*(volatile uint8_t*)(TIM2_BASE + 0x14))
+
 #define TIM4_BASE		0x5340
 
 #define TIM4_CR1		(*(volatile uint8_t*)(TIM4_BASE))
@@ -181,12 +206,18 @@
 #define TIM4_ARR		(*(volatile uint8_t*)(TIM4_BASE + 0x6))
 
 #define ITC_BASE					0x50A0
+#define EXIT_FALLINGLOW				00
+#define EXTI_RISING					01
+#define EXTI_FALLING				10
 #define EXTI_RISINGFALLING			11
 #define EXTI_CR1					(*(volatile uint8_t*)(ITC_BASE))
 #define EXTI_CR1_PDIS_SHIFT			6
+#define EXTI_CR1_PDIS_FALLING		(EXTI_FALLING << EXTI_CR1_PDIS_SHIFT)
 #define EXTI_CR1_PDIS_RISINGFALLING (EXTI_RISINGFALLING << EXTI_CR1_PDIS_SHIFT)
 
-#define EXTI_CR2		(*(volatile uint8_t*)(ITC_BASE + 0x1))
+#define EXTI_CR2					(*(volatile uint8_t*)(ITC_BASE + 0x1))
+#define EXTI_CR2_TLIS_FALLING		0
+#define EXTI_CR2_TLIS_RISING		(1 << 2)
 
 #define INTERRUPT_TLI				0 // top level interrupt, port d 7
 #define INTERRUPT_EXTI3				6 // port d external interrupt
