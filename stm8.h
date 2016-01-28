@@ -79,9 +79,11 @@
 #define ADC_DB2R	(volatile uint8_t*)(ADC_DBBASE + 2)
 #define ADC_DB3R	(volatile uint8_t*)(ADC_DBBASE + 3)
 
-#define ADC_BASE	0x5400
-#define ADC_CSR		(*(volatile uint8_t*)(ADC_BASE))
-#define ADC_CSR_EOC	(1 << 7)
+#define ADC_BASE		0x5400
+#define ADC_CSR			(*(volatile uint8_t*)(ADC_BASE))
+#define ADC_CSR_EOCIE	(1 << 5)
+#define ADC_CSR_EOC		(1 << 7)
+
 #define ADC_CR1		(*(volatile uint8_t*)(ADC_BASE + 1))
 #define ADC_CR1_ADON	(1)
 #define ADC_CR1_CONT	(1 << 1)
@@ -223,4 +225,5 @@
 #define INTERRUPT_EXTI3				6 // port d external interrupt
 #define INTERRUPT_UART2_TXCOMPLETE	20
 #define INTERRUPT_UART2_RXFULL		21
+#define INTERRUPT_ADC1				22
 #define INTERRUPT_TIM4				23

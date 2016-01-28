@@ -44,19 +44,9 @@
 #include "util.h"
 #include "buttons.h"
 #include "load.h"
+#include "adc.h"
 
 #define FANWATTTHRESHOLD	2500
-
-#define ADC_VIN 4
-#define ADC_SHUNT 3
-#define ADC_VIN_HIGHGAIN 5
-#define MILLIVOLTSPERSTEP 20
-
-// tenths of millivolts
-#define MILLIVOLTSPERSTEP_HIGHGAIN 65
-#define HIGHOFFSET 20
-
-#define MICROVOLTSPERSTEP_SHUNT 68
 
 static uint32_t systick = 0;
 
@@ -72,18 +62,6 @@ static void initserial(void) {
 	uart_configure();
 }
 
-static void setadcchan(int which) {
-	uint8_t csr = ADC_CSR;
-	csr &= ~0b111;
-	csr |= which;
-	ADC_CSR = csr;
-}
-
-static void initadc(void) {
-	setadcchan(ADC_VIN);
-	ADC_CR1 |= ADC_CR1_ADON;
-}
-
 static void turnonfan() {
 	*PB_ODR |= (1 << 2);
 }
@@ -95,58 +73,9 @@ static void configureload() {
 	*PC_ODR |= 1 << 1;
 }
 
-static uint16_t readadc(int which) {
-	uint16_t result;
-	setadcchan(which);
-	ADC_CR1 |= ADC_CR1_ADON;
-	while ((ADC_CSR & ADC_CSR_EOC) == 0) {
-
-	}
-	ADC_CSR &= ~ADC_CSR_EOC;
-	result = (((uint16_t) ADC_DRH) << 2) | ADC_DRL;
-	return result;
-}
-
 static int8_t volttrim = -1;
 
-#define SAMPLES 12
-static uint16_t voltsamples[SAMPLES] = { 0 };
-static uint16_t shuntsamples[SAMPLES] = { 0 };
-static uint16_t volthighgainsamples[SAMPLES] = { 0 };
-static uint8_t sample = 0;
-
 static void checkstate(void) {
-	int i;
-	uint32_t voltsum = 0;
-	uint32_t shuntsum = 0;
-	uint32_t volthighgainsum = 0;
-	uint32_t wattstemp = 0;
-	uint16_t lowgainvolts, highgainvolts;
-
-	shuntsamples[sample] = readadc(ADC_SHUNT);
-	voltsamples[sample] = readadc(ADC_VIN);
-	volthighgainsamples[sample] = readadc(ADC_VIN_HIGHGAIN);
-
-	sample = (sample + 1) % SAMPLES;
-	for (i = 0; i < SAMPLES; i++) {
-		shuntsum += shuntsamples[i];
-		voltsum += voltsamples[i];
-		volthighgainsum += volthighgainsamples[i];
-	}
-
-	amps = ((shuntsum / SAMPLES) * MICROVOLTSPERSTEP_SHUNT) / 20;
-	highgainvolts = (((volthighgainsum / SAMPLES) * MILLIVOLTSPERSTEP_HIGHGAIN)
-			/ 10) - HIGHOFFSET;
-	lowgainvolts = (voltsum / SAMPLES) * (MILLIVOLTSPERSTEP);
-	highgain = lowgainvolts <= 6000;
-	if (highgain)
-		volts = highgainvolts;
-	else
-		volts = lowgainvolts;
-
-	wattstemp = ((uint32_t) amps * (uint32_t) volts) / 1000;
-	watts = (uint16_t) wattstemp;
-
 	if (watts > FANWATTTHRESHOLD)
 		turnonfan();
 	else
@@ -231,10 +160,6 @@ static void sendstate(void) {
 	sep();
 	splitandprintvalue(loadduty);
 
-	//
-	sep();
-	splitandprintvalue(TIM2_CNTRL);
-
 	uart_puts("\r\n");
 }
 
@@ -244,16 +169,18 @@ int main() {
 	initserial();
 	display_init();
 	initfan();
-	initadc();
+	adc_init();
 
 	buttons_init();
 
 	enableInterrupts();
 
 	while (1) {
-		buttons_check();
-		checkstate();
-		sendstate();
+		if (adc_updatereadings()) {
+			checkstate();
+			sendstate();
+		}
 		display_update();
+		buttons_check();
 	}
 }
