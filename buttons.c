@@ -59,7 +59,7 @@ static void buttons_incvalue() {
 	targetamps = pack(tmp, 4);
 }
 
-void buttons_check(void) {
+bool buttons_check(void) {
 	uint8_t buttonstate = *PD_IDR;
 	bool onup = (buttonstate & (1 << 3));
 	bool checkon = (onpt == PT_DOWN) && onup;
@@ -112,6 +112,7 @@ void buttons_check(void) {
 		setpt = PT_NONE;
 	}
 
+	return checkset || checkon;
 }
 
 void buttons_init(void) {

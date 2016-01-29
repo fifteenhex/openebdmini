@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include "stm8.h"
 
 typedef enum {
@@ -13,4 +14,4 @@ void buttons_on_handler(void)
 __interrupt(INTERRUPT_EXTI3);
 
 void buttons_init(void);
-void buttons_check(void);
+bool buttons_check(void);

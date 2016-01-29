@@ -188,6 +188,35 @@
 #define TIM2_CCR3H		(*(volatile uint8_t*)(TIM2_BASE + 0x13))
 #define TIM2_CCR3L		(*(volatile uint8_t*)(TIM2_BASE + 0x14))
 
+#define TIM3_BASE		0x5320
+#define TIM3_CR1		(*(volatile uint8_t*)(TIM3_BASE))
+#define TIM3_CR1_CEN	1
+
+#define TIM3_IER		(*(volatile uint8_t*)(TIM3_BASE + 0x1))
+#define TIM3_IER_TIE	(1 << 6)
+#define TIM3_IER_CC3IE	(1 << 3)
+#define TIM3_IER_CC2IE	(1 << 2)
+#define TIM3_IER_CC1IE	(1 << 1)
+#define TIM3_IER_UIE	1
+
+#define TIM3_SR1		(*(volatile uint8_t*)(TIM3_BASE + 0x2))
+#define TIM3_SR1_UIF	1
+
+#define TIM3_SR2		(*(volatile uint8_t*)(TIM3_BASE + 0x3))
+#define TIM3_EGR		(*(volatile uint8_t*)(TIM3_BASE + 0x4))
+#define TIM3_CCMR1		(*(volatile uint8_t*)(TIM3_BASE + 0x5))
+#define TIM3_CCMR2		(*(volatile uint8_t*)(TIM3_BASE + 0x6))
+#define TIM3_CCER1		(*(volatile uint8_t*)(TIM3_BASE + 0x7))
+#define TIM3_CNTRH		(*(volatile uint8_t*)(TIM3_BASE + 0x8))
+#define TIM3_CNTRL		(*(volatile uint8_t*)(TIM3_BASE + 0x9))
+#define TIM3_PSCR		(*(volatile uint8_t*)(TIM3_BASE + 0xa))
+#define TIM3_ARRH		(*(volatile uint8_t*)(TIM3_BASE + 0xb))
+#define TIM3_ARRL		(*(volatile uint8_t*)(TIM3_BASE + 0xc))
+#define TIM3_CCR1H		(*(volatile uint8_t*)(TIM3_BASE + 0xd))
+#define TIM3_CCR1L		(*(volatile uint8_t*)(TIM3_BASE + 0xe))
+#define TIM3_CCR2H		(*(volatile uint8_t*)(TIM3_BASE + 0xf))
+#define TIM3_CCR2L		(*(volatile uint8_t*)(TIM3_BASE + 0x10))
+
 #define TIM4_BASE		0x5340
 
 #define TIM4_CR1		(*(volatile uint8_t*)(TIM4_BASE))
@@ -223,6 +252,8 @@
 
 #define INTERRUPT_TLI				0 // top level interrupt, port d 7
 #define INTERRUPT_EXTI3				6 // port d external interrupt
+#define INTERRUPT_TIM3_UPDATEOVERFLOW	15
+#define INTERRUPT_TIM3_CAPTURECOMPARE	16
 #define INTERRUPT_UART2_TXCOMPLETE	20
 #define INTERRUPT_UART2_RXFULL		21
 #define INTERRUPT_ADC1				22

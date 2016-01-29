@@ -45,6 +45,7 @@
 #include "buttons.h"
 #include "load.h"
 #include "adc.h"
+#include "timer.h"
 
 #define FANWATTTHRESHOLD	2500
 
@@ -69,41 +70,45 @@ static void turnofffan() {
 	*PB_ODR &= ~(1 << 2);
 }
 
-static void configureload() {
-	*PC_ODR |= 1 << 1;
-}
-
 static int8_t volttrim = -1;
 
 static void checkstate(void) {
+	static operationmode lastmode = OPMODE_OFF;
+
+	// stuff that only happens at mode changes
+	if (om != lastmode) {
+		switch (om) {
+		case OPMODE_ON:
+			timer_start();
+			break;
+		case OPMODE_LVC:
+		case OPMODE_OFF:
+			load_turnoff();
+			timer_stop();
+			turnofffan();
+			break;
+		}
+		lastmode = om;
+	}
+
+	// stuff that always has to happen while the load is on
+	if (om == OPMODE_ON) {
+		if (volts < lvc) {
+			load_turnoff();
+			om = OPMODE_LVC;
+		} else {
+			if (amps < targetamps) {
+				load_setduty(loadduty - 1);
+			} else if (amps > targetamps) {
+				load_setduty(loadduty + 1);
+			}
+		}
+	}
+
 	if (watts > FANWATTTHRESHOLD)
 		turnonfan();
 	else
 		turnofffan();
-
-	switch (om) {
-	case OPMODE_ON:
-		if (volts < lvc) {
-			om = OPMODE_LVC;
-			load_turnoff();
-		} else {
-			if (amps < targetamps) {
-				if (loadduty > 300) {
-					loadduty--;
-					load_setduty(loadduty);
-				}
-			} else if (amps > targetamps) {
-				if (loadduty < 1000) {
-					loadduty++;
-					load_setduty(loadduty);
-				}
-			}
-		}
-		break;
-	case OPMODE_OFF:
-		load_turnoff();
-		break;
-	}
 }
 
 static void sep(void) {
@@ -164,9 +169,13 @@ static void sendstate(void) {
 }
 
 int main() {
+	bool newreadings;
+	bool buttonschanged;
+
 	load_init();
 	initsystem();
 	initserial();
+	timer_init();
 	display_init();
 	initfan();
 	adc_init();
@@ -176,11 +185,14 @@ int main() {
 	enableInterrupts();
 
 	while (1) {
-		if (adc_updatereadings()) {
+		newreadings = adc_updatereadings();
+		if (newreadings) {
 			checkstate();
-			sendstate();
 		}
-		display_update();
-		buttons_check();
+		buttonschanged = buttons_check();
+		if (newreadings || buttonschanged) {
+			sendstate();
+			display_update();
+		}
 	}
 }

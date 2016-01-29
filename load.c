@@ -3,19 +3,27 @@
 #include "stm8.h"
 #include "state.h"
 
-void load_setduty(uint16_t duty) {
+#define OFFDUTY 1024
+
+static void load_reallysetduty(uint16_t duty) {
+	loadduty = duty;
 	TIM1_CCR1H = (uint8_t)((duty >> 8) & 0xff);
 	TIM1_CCR1L = (uint8_t)(duty & 0xff);
 	TIM1_EGR |= TIM1_EGR_UG;
 }
 
+void load_setduty(uint16_t duty) {
+	if (duty > 300 && duty < OFFDUTY) {
+		load_reallysetduty(duty);
+	}
+}
+
 void load_turnoff(void) {
-	loadduty = 1025;
-	load_setduty(loadduty);
+	load_reallysetduty(OFFDUTY);
 }
 
 void load_init(void) {
-	const uint16_t reloadvalue = 1024;
+	const uint16_t reloadvalue = OFFDUTY;
 
 	setuppins(PC_DDR, PC_CR1, 1 << 1);
 	*PC_ODR &= ~(1 << 1);
@@ -27,7 +35,6 @@ void load_init(void) {
 	TIM1_ARRH = (uint8_t)((reloadvalue >> 8) & 0xff);
 	TIM1_ARRL = (uint8_t)(reloadvalue & 0xff);
 
-	load_setduty(reloadvalue);
-
+	load_turnoff();
 	TIM1_CR1 |= TIM1_CR1_ARPE | TIM1_CR1_CEN;
 }

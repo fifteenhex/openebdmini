@@ -26,6 +26,7 @@ typedef enum {
 	CHAR_LITTLEV,
 	CHAR_P,
 	CHAR_H,
+	CHAR_T,
 	CHAR_SPACE
 } character;
 
@@ -80,6 +81,9 @@ static characterbits cbits[] = {
 		// H
 		{ .pbbits = 1, .pcbits = (1 << 7) | (1 << 6) | (1 << 4), .pdbits = 0,
 				.pebits = (1 << 5) },
+		// t
+		{ .pbbits = 1, .pcbits = (1 << 7) | (1 << 4), .pdbits = (1 << 2),
+				.pebits = 0 },
 		// SPACE
 		{ .pbbits = 0, .pcbits = 0, .pdbits = 0, .pebits = 0 } };
 
@@ -165,11 +169,12 @@ __interrupt(INTERRUPT_TIM4) {
 
 void display_update(void) {
 
+	static character unit = CHAR_SPACE;
+
 	uint16_t millis;
 	uint16_t units;
 
 	uint16_t value = 1;
-	character unit;
 
 	uint16_t splittmp[3];
 	int digit = 0;
@@ -198,10 +203,19 @@ void display_update(void) {
 		unit = CHAR_P;
 		value = watts;
 		break;
+	case TIME:
+		unit = CHAR_T;
+		value = time;
+		break;
 	}
 
-	millis = value % 1000;
-	units = (value - millis) / 1000;
+	if (dm == TIME) {
+		millis = value % 60;
+		units = (value - millis) / 60;
+	} else {
+		millis = value % 1000;
+		units = (value - millis) / 1000;
+	}
 
 	split(units, splittmp, 3);
 	for (pos = 0; pos < 3; pos++) {
@@ -214,7 +228,8 @@ void display_update(void) {
 	}
 
 	split(millis, splittmp, 3);
-	for (pos = 0; pos < 3 && digit < 3; pos++) {
+	pos = dm == TIME ? 1 : 0;
+	for (; pos < 3 && digit < 3; pos++) {
 		currentchars[digit] = (character) splittmp[pos];
 		digit++;
 	}
