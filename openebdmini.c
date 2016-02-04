@@ -38,18 +38,18 @@
  */
 
 #include "state.h"
-#include "stm8.h"
 #include "uart.h"
+#include "stm8.h"
 #include "display.h"
-#include "util.h"
 #include "buttons.h"
 #include "load.h"
 #include "adc.h"
 #include "timer.h"
+#include "protocol.h"
+#include "watchdog.h"
+#include "util.h"
 
 #define FANWATTTHRESHOLD	2500
-
-static uint32_t systick = 0;
 
 static void initsystem(void) {
 	*CLK_CKDIVR = 0; // default is 2MHz, remove divider for 16MHz
@@ -111,69 +111,15 @@ static void checkstate(void) {
 		turnofffan();
 }
 
-static void sep(void) {
-	uart_puts(",");
-}
-
-static void splitandprintvalue(uint16_t value) {
-	int i;
-	uint16_t splittmp[6];
-	split(value, splittmp, 6);
-	for (i = 0; i < 6; i++) {
-		uart_putch(splittmp[i] + 0x30);
-	}
-}
-
-static void sendstate(void) {
-
-	switch (om) {
-	case OPMODE_OFF:
-		uart_puts("off");
-		break;
-	case OPMODE_SET:
-		uart_puts("set");
-		break;
-	case OPMODE_ON:
-		uart_puts("on");
-		break;
-	case OPMODE_LVC:
-		uart_puts("lvc");
-		break;
-	}
-	sep();
-
-	// volts
-	splitandprintvalue(volts);
-	sep();
-
-	// amps
-	splitandprintvalue(amps);
-	sep();
-
-	// watts
-	splitandprintvalue(watts);
-	sep();
-
-	// target amps
-	splitandprintvalue(targetamps);
-	sep();
-
-	// lvc
-	splitandprintvalue(lvc);
-
-	//
-	sep();
-	splitandprintvalue(loadduty);
-
-	uart_puts("\r\n");
-}
-
 int main() {
+	static uint8_t lastsequence = 0;
+	uint8_t rxbyte;
 	bool newreadings;
 	bool buttonschanged;
 
 	load_init();
 	initsystem();
+	watchdog_init();
 	initserial();
 	timer_init();
 	display_init();
@@ -184,15 +130,27 @@ int main() {
 
 	enableInterrupts();
 
+	protocol_onbooted();
+
 	while (1) {
+		watchdog_kick();
 		newreadings = adc_updatereadings();
 		if (newreadings) {
 			checkstate();
 		}
 		buttonschanged = buttons_check();
 		if (newreadings || buttonschanged) {
-			sendstate();
+			//protocol_sendstate();
 			display_update();
+		}
+
+		if (sequence != lastsequence) {
+			while (uart_getch(&rxbyte)) {
+				uart_putch(rxbyte);
+				if (rxbyte == '\n')
+					break;
+			}
+			lastsequence = sequence;
 		}
 	}
 }

@@ -113,17 +113,17 @@ static void setdigit(character c, bool dot) {
 
 }
 
-static void turnonled() {
-	*PB_ODR |= (1 << 1);
+static inline void turnonled() {
+	//*PB_ODR |= (1 << 1);
 }
 
-static void turnoffled() {
-	*PB_ODR &= ~(1 << 1);
+static inline void turnoffled() {
+	//*PB_ODR &= ~(1 << 1);
 }
 
 static int last = 0;
 
-static void toggleled() {
+static inline void toggleled() {
 	if (last == 0) {
 		if (*PB_ODR & (1 << 1))
 			turnoffled();
@@ -137,6 +137,7 @@ __interrupt(INTERRUPT_TIM4) {
 	character ch;
 	bool dot;
 	int digit = last & 0x03;
+
 	*digits[digit].odr |= (1 << digits[digit].bit);
 	last++;
 	digit = last & 0x03;
@@ -249,8 +250,7 @@ void display_init(void) {
 	*digits[2].odr |= 1 << digits[2].bit;
 	*digits[3].odr |= 1 << digits[3].bit;
 
-	TIM4_PSCR = 128;
-	TIM4_EGR |= TIM1_EGR_UG;
+	TIM4_PSCR = TIM4_PSCR_128;
 	TIM4_IER |= TIM4_IER_UIE;
 	TIM4_CR1 |= TIM4_CR1_CEN;
 }

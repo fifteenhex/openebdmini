@@ -234,6 +234,14 @@
 
 #define TIM4_CNTR		(*(volatile uint8_t*)(TIM4_BASE + 0x4))
 #define TIM4_PSCR		(*(volatile uint8_t*)(TIM4_BASE + 0x5))
+#define TIM4_PSCR_1		0
+#define TIM4_PSCR_2		0b001
+#define TIM4_PSCR_4		0b010
+#define TIM4_PSCR_8		0b011
+#define TIM4_PSCR_16	0b100
+#define TIM4_PSCR_32	0b101
+#define TIM4_PSCR_64	0b110
+#define TIM4_PSCR_128	0b111
 #define TIM4_ARR		(*(volatile uint8_t*)(TIM4_BASE + 0x6))
 
 #define ITC_BASE					0x50A0
@@ -249,6 +257,21 @@
 #define EXTI_CR2					(*(volatile uint8_t*)(ITC_BASE + 0x1))
 #define EXTI_CR2_TLIS_FALLING		0
 #define EXTI_CR2_TLIS_RISING		(1 << 2)
+
+#define IWDG_BASE					0x50E0
+#define IWDG_KR						(*(volatile uint8_t*)(IWDG_BASE))
+#define IWDG_KR_ENABLE				0xCC
+#define IWDG_KR_REFRESH				0xAA
+#define IWDG_KR_ACCESS				0x55
+#define IWDG_PR						(*(volatile uint8_t*)(IWDG_BASE + 0x1))
+#define IWDG_PR_4					0
+#define IWDG_PR_8					0b1
+#define IWDG_PR_16					0b10
+#define IWDG_PR_32					0b11
+#define IWDG_PR_64					0b100
+#define IWDG_PR_128					0b101
+#define IWDG_PR_256					0b110
+#define IWDG_RLR					(*(volatile uint8_t*)(IWDG_BASE + 0x2))
 
 #define INTERRUPT_TLI				0 // top level interrupt, port d 7
 #define INTERRUPT_EXTI3				6 // port d external interrupt

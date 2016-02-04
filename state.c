@@ -12,3 +12,4 @@ uint8_t digitbeingset = 0;
 uint16_t time = 0;
 displaymode dm = VOLTS;
 operationmode om = OPMODE_OFF;
+uint8_t sequence = 0;
