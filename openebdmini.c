@@ -112,8 +112,6 @@ static void checkstate(void) {
 }
 
 int main() {
-	static uint8_t lastsequence = 0;
-	uint8_t rxbyte;
 	bool newreadings;
 	bool buttonschanged;
 
@@ -140,17 +138,10 @@ int main() {
 		}
 		buttonschanged = buttons_check();
 		if (newreadings || buttonschanged) {
-			//protocol_sendstate();
+			protocol_sendstate();
 			display_update();
 		}
 
-		if (sequence != lastsequence) {
-			while (uart_getch(&rxbyte)) {
-				uart_putch(rxbyte);
-				if (rxbyte == '\n')
-					break;
-			}
-			lastsequence = sequence;
-		}
+		protocol_checkcommand();
 	}
 }

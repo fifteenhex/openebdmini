@@ -25,3 +25,5 @@ extern uint16_t time;
 extern displaymode dm;
 extern operationmode om;
 extern uint8_t sequence;
+
+bool state_changeopmode(operationmode newmode);
